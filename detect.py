@@ -26,11 +26,14 @@ Usage - formats:
 
 import argparse
 import os
+import platform
 import sys
 from pathlib import Path
-
 import torch
 import torch.backends.cudnn as cudnn
+import requests
+import time
+
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # YOLOv5 root directory
@@ -49,7 +52,7 @@ from utils.torch_utils import select_device, time_sync
 @torch.no_grad()
 def run(
         weights=ROOT / 'yolov5s.pt',  # model.pt path(s)
-        source=ROOT / 'https://192.168.1.208:8080',  # file/dir/URL/glob, 0 for webcam
+        source=ROOT / 'data/images',  # file/dir/URL/glob, 0 for webcam
         data=ROOT / 'data/coco128.yaml',  # dataset.yaml path
         imgsz=(640, 640),  # inference size (height, width)
         conf_thres=0.25,  # confidence threshold
@@ -154,9 +157,29 @@ def run(
                 for c in det[:, -1].unique():
                     n = (det[:, -1] == c).sum()  # detections per class
                     s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
-
+                #     userdata = {'type': names[int(c)], 'val': int(conf)}
+                
+                
+                    
+                #print("name : ", names[int(c)], n)
+                
+                
                 # Write results
+               
+                
                 for *xyxy, conf, cls in reversed(det):
+                
+                    ttest = int(n)
+                    ttt = float(conf)
+                
+                    userdata = {"name":names[int(c)], "acc" : round(ttt,3)}
+                    url = 'http://192.168.1.69/info.php'    
+                    resp = requests.post(url, data=userdata, verify=False)    
+                    time.sleep(2)
+                    print(resp, userdata)
+                    
+                    #$ptype = $_POST['이름', 'class', '정확도'];
+                    
                     if save_txt:  # Write to file
                         xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
                         line = (cls, *xywh, conf) if save_conf else (cls, *xywh)  # label format
@@ -169,16 +192,19 @@ def run(
                         annotator.box_label(xyxy, label, color=colors(c, True))
                     if save_crop:
                         save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
-
+                    
+                
+                
             # Stream results
             im0 = annotator.result()
             if view_img:
-                if p not in windows:
+                if platform.system() == 'Linux' and p not in windows:
                     windows.append(p)
                     cv2.namedWindow(str(p), cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)  # allow window resize (Linux)
                     cv2.resizeWindow(str(p), im0.shape[1], im0.shape[0])
                 cv2.imshow(str(p), im0)
                 cv2.waitKey(1)  # 1 millisecond
+           
 
             # Save results (image with detections)
             if save_img:
@@ -207,6 +233,7 @@ def run(
     LOGGER.info(f'Speed: %.1fms pre-process, %.1fms inference, %.1fms NMS per image at shape {(1, 3, *imgsz)}' % t)
     if save_txt or save_img:
         s = f"\n{len(list(save_dir.glob('labels/*.txt')))} labels saved to {save_dir / 'labels'}" if save_txt else ''
+        
         LOGGER.info(f"Results saved to {colorstr('bold', save_dir)}{s}")
     if update:
         strip_optimizer(weights)  # update model (to fix SourceChangeWarning)
@@ -215,7 +242,7 @@ def run(
 def parse_opt():
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'yolov5s.pt', help='model path(s)')
-    parser.add_argument('--source', type=str, default=ROOT / 'https://192.168.1.208:8080', help='file/dir/URL/glob, 0 for webcam')
+    parser.add_argument('--source', type=str, default=ROOT / 'data/images', help='file/dir/URL/glob, 0 for webcam')
     parser.add_argument('--data', type=str, default=ROOT / 'data/coco128.yaml', help='(optional) dataset.yaml path')
     parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[640], help='inference size h,w')
     parser.add_argument('--conf-thres', type=float, default=0.25, help='confidence threshold')
