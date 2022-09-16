@@ -1,0 +1,5 @@
+train: /Users/eunsoo/yolov5/train/images
+val: /Users/eunsoo/yolov5/valid/images
+
+nc: 2
+names: ['host', 'guest']
